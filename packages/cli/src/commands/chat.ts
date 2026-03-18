@@ -64,10 +64,12 @@ export const chatCmd = new Command("chat")
         }
       }
 
-      // Build WS URL
+      // Build WS URL — sessionId in the URL is a random browser session identifier,
+      // NOT the chat sessionKey. The sessionKey goes in the message payload.
+      const wsSessionId = randomUUID();
       const wsProtocol = cfg.url.startsWith("https") ? "wss" : "ws";
       const wsHost = cfg.url.replace(/^https?:\/\//, "");
-      const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${encodeURIComponent(sessionId!)}`;
+      const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${wsSessionId}`;
 
       const timeoutMs = parseFloat(opts.timeout) * 1000;
 

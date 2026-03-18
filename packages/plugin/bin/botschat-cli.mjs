@@ -1149,9 +1149,10 @@ var chatCmd = new Command9("chat").description("Chat with an AI agent").argument
         updateConfig({ defaultSession: sessionId });
       }
     }
+    const wsSessionId = randomUUID3();
     const wsProtocol = cfg.url.startsWith("https") ? "wss" : "ws";
     const wsHost = cfg.url.replace(/^https?:\/\//, "");
-    const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${encodeURIComponent(sessionId)}`;
+    const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${wsSessionId}`;
     const timeoutMs = parseFloat(opts.timeout) * 1e3;
     if (interactive) {
       await runInteractive(wsUrl, sessionId, opts.agent, cfg.userId);
