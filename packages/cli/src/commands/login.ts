@@ -129,6 +129,7 @@ async function browserLogin(autoOpen = true): Promise<void> {
 
         // Close server after delay (let browser render the page)
         setTimeout(() => {
+          server.closeAllConnections();
           server.close();
           resolve();
         }, 2000);

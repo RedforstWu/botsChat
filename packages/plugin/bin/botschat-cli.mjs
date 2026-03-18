@@ -597,6 +597,7 @@ async function browserLogin(autoOpen = true) {
 Logged in as ${email} (${userId})`);
         }
         setTimeout(() => {
+          server.closeAllConnections();
           server.close();
           resolve();
         }, 2e3);
