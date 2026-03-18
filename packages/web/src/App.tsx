@@ -11,7 +11,7 @@ import {
   type ActiveView,
   type ActivityItem,
 } from "./store";
-import { getToken, setToken, setRefreshToken, agentsApi, channelsApi, tasksApi, jobsApi, authApi, messagesApi, modelsApi, meApi, sessionsApi, type ModelInfo } from "./api";
+import { getToken, getRefreshToken, setToken, setRefreshToken, agentsApi, channelsApi, tasksApi, jobsApi, authApi, messagesApi, modelsApi, meApi, sessionsApi, type ModelInfo } from "./api";
 import { ModelSelect } from "./components/ModelSelect";
 import { BotsChatWSClient, type WSMessage } from "./ws";
 import { initPushNotifications, getPendingPushNav, clearPendingPushNav, notifyIfBackground } from "./push";
@@ -148,8 +148,22 @@ export default function App() {
 
   // ---- Auto-login on mount ----
   useEffect(() => {
-    // Dev-token auth bypass: ?dev_token=xxx in URL
     const params = new URLSearchParams(window.location.search);
+
+    // CLI login success: ?cli_done=1 — show success banner and clean URL
+    if (params.get("cli_done")) {
+      params.delete("cli_done");
+      const clean = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (clean ? `?${clean}` : ""));
+      // Brief overlay — auto-dismiss after 3s, page continues loading normally
+      const banner = document.createElement("div");
+      banner.innerHTML = `<div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#22c55e;color:#fff;text-align:center;padding:12px;font-family:system-ui;font-weight:600">
+        &#10003; CLI login successful — you can close this tab and return to the terminal.</div>`;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 5000);
+    }
+
+    // Dev-token auth bypass: ?dev_token=xxx in URL
     const devToken = params.get("dev_token");
     const devUser = params.get("dev_user");
     if (devToken) {
@@ -203,6 +217,26 @@ export default function App() {
         .me()
         .then((user) => {
           dlog.info("Auth", `Logged in as ${user.email} (${user.id})`);
+
+          // CLI callback: if cli_port is in URL and user is already logged in,
+          // redirect to CLI's local server with credentials (avoids Mixed Content blocking).
+          const cliParams = new URLSearchParams(window.location.search);
+          const cliPort = cliParams.get("cli_port");
+          const cliState = cliParams.get("cli_state");
+          if (cliPort) {
+            dlog.info("Auth", `CLI callback detected (port=${cliPort}), redirecting`);
+            const q = new URLSearchParams({
+              token,
+              refreshToken: getRefreshToken() || "",
+              userId: user.id,
+              email: user.email,
+              displayName: user.displayName || "",
+              state: cliState || "",
+            });
+            window.location.href = `http://127.0.0.1:${cliPort}/callback?${q.toString()}`;
+            return; // Don't dispatch SET_USER — page is redirecting
+          }
+
           dispatch({ type: "SET_USER", user });
           // defaultModel comes from plugin via connection.status, not from user.settings
         })

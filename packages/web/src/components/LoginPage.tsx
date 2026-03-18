@@ -74,6 +74,25 @@ export function LoginPage() {
   const handleAuthSuccess = (res: { id: string; email: string; displayName?: string; token: string; refreshToken?: string }) => {
     setToken(res.token);
     if (res.refreshToken) setRefreshToken(res.refreshToken);
+
+    // CLI callback: if cli_port is in URL, redirect to CLI's local server with credentials.
+    // Uses redirect (not fetch) to avoid Mixed Content blocking (HTTPS → HTTP localhost).
+    const params = new URLSearchParams(window.location.search);
+    const cliPort = params.get("cli_port");
+    const cliState = params.get("cli_state");
+    if (cliPort) {
+      const q = new URLSearchParams({
+        token: res.token,
+        refreshToken: res.refreshToken || "",
+        userId: res.id,
+        email: res.email,
+        displayName: res.displayName || "",
+        state: cliState || "",
+      });
+      window.location.href = `http://127.0.0.1:${cliPort}/callback?${q.toString()}`;
+      return; // Don't proceed to normal app
+    }
+
     dispatch({
       type: "SET_USER",
       user: { id: res.id, email: res.email, displayName: res.displayName },

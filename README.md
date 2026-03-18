@@ -253,6 +253,72 @@ Open the BotsChat web UI in your browser, sign in, and start chatting with your 
 4. Your API keys, agent configs, and data never leave your machine — only chat messages travel through the relay.
 5. With **E2E encryption** enabled, messages are encrypted **before** step 3 and decrypted **after** — the ConnectionDO and database only ever see ciphertext.
 
+## CLI
+
+BotsChat includes a command-line client with full E2E encryption support. No install needed — use `npx`:
+
+```bash
+npx @botschat/botschat login              # Login via browser (Google/GitHub/Apple)
+npx @botschat/botschat chat "Hello"       # Send a message
+npx @botschat/botschat chat -i            # Interactive chat
+```
+
+Or install globally for shorter commands:
+
+```bash
+npm i -g @botschat/botschat
+botschat login
+botschat chat "Hello"
+```
+
+### Login
+
+```bash
+npx @botschat/botschat login                          # Browser OAuth (recommended)
+npx @botschat/botschat --url http://localhost:8787 login --dev --secret <secret>  # Local dev
+```
+
+Running `login` opens your browser, you sign in normally, and credentials are saved to `~/.botschat/config.json`.
+
+### Chat
+
+```bash
+npx @botschat/botschat chat "What can you do?"           # Single-shot
+npx @botschat/botschat chat -i                           # Interactive REPL
+echo "Summarize this log" | npx @botschat/botschat chat --pipe  # Pipe from stdin
+npx @botschat/botschat --json chat "Hello"               # JSON output
+```
+
+### Management
+
+```bash
+npx @botschat/botschat whoami                            # Current user info
+npx @botschat/botschat channels                          # List channels
+npx @botschat/botschat sessions <channelId>              # List sessions
+npx @botschat/botschat models                            # List available models
+npx @botschat/botschat models set <modelId>              # Set default model
+npx @botschat/botschat tasks                             # List background tasks
+npx @botschat/botschat tasks run <channelId> <taskId>    # Run a task now
+npx @botschat/botschat jobs <taskId>                     # Job execution history
+npx @botschat/botschat messages <sessionKey>             # Message history
+npx @botschat/botschat tokens                            # Manage pairing tokens
+npx @botschat/botschat status                            # OpenClaw connection status
+npx @botschat/botschat config                            # View config
+npx @botschat/botschat config e2e --password <pwd>       # Set E2E encryption password
+```
+
+### OpenClaw Skill
+
+Use the CLI as an [OpenClaw skill](https://openclawai.com/docs/skills) — your agent can interact with BotsChat directly:
+
+```bash
+npx skills add @botschat/botschat
+```
+
+This registers `/botschat` as a skill in OpenClaw, providing commands like `botschat chat`, `botschat channels`, `botschat status`, etc.
+
+---
+
 ## Plugin Reference
 
 ### Configuration
