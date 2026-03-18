@@ -11,7 +11,7 @@ Interact with [BotsChat](https://botschat.app) directly from OpenClaw. Send mess
 ## Install
 
 ```bash
-npx skills add @botschat/botschat
+npx skills add botschat-app/botsChat
 ```
 
 Or use directly with npx (no install):

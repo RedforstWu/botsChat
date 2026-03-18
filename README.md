@@ -312,7 +312,7 @@ npx @botschat/botschat config e2e --password <pwd>       # Set E2E encryption pa
 Use the CLI as an [OpenClaw skill](https://openclawai.com/docs/skills) — your agent can interact with BotsChat directly:
 
 ```bash
-npx skills add @botschat/botschat
+npx skills add botschat-app/botsChat
 ```
 
 This registers `/botschat` as a skill in OpenClaw, providing commands like `botschat chat`, `botschat channels`, `botschat status`, etc.
