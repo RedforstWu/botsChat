@@ -15,8 +15,9 @@ export const chatCmd = new Command("chat")
   .option("-c, --channel <channelId>", "Channel ID")
   .option("-a, --agent <agentId>", "Agent ID")
   .option("--no-stream", "Wait for full response instead of streaming")
+  .option("--async", "Send message and exit immediately without waiting for response")
   .option("--pipe", "Read message from stdin")
-  .option("--timeout <ms>", "Timeout in ms for single-shot mode", "120000")
+  .option("--timeout <seconds>", "Timeout in seconds for single-shot mode", "300")
   .action(async (message: string | undefined, opts) => {
     try {
       const cfg = loadConfig();
@@ -41,7 +42,6 @@ export const chatCmd = new Command("chat")
       let sessionId = opts.session || cfg.defaultSession;
 
       if (!channelId || !sessionId) {
-        // Auto-resolve from first channel / first session
         const { channels } = await channelsApi.list();
         if (channels.length === 0) {
           printError("No channels found. Create one first.");
@@ -55,7 +55,6 @@ export const chatCmd = new Command("chat")
         if (!sessionId) {
           const { sessions } = await sessionsApi.list(channelId);
           if (sessions.length === 0) {
-            // Create a session
             const session = await sessionsApi.create(channelId);
             sessionId = session.sessionKey;
           } else {
@@ -70,15 +69,19 @@ export const chatCmd = new Command("chat")
       const wsHost = cfg.url.replace(/^https?:\/\//, "");
       const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${encodeURIComponent(sessionId!)}`;
 
+      const timeoutMs = parseFloat(opts.timeout) * 1000;
+
       if (interactive) {
         await runInteractive(wsUrl, sessionId!, opts.agent, cfg.userId);
+      } else if (opts.async) {
+        await runAsync(wsUrl, sessionId!, message!, opts.agent);
       } else {
         await runSingleShot(
           wsUrl,
           sessionId!,
           message!,
           opts.agent,
-          parseInt(opts.timeout),
+          timeoutMs,
           opts.stream !== false,
         );
       }
@@ -88,12 +91,13 @@ export const chatCmd = new Command("chat")
     }
   });
 
+/** Send message and wait for response. */
 async function runSingleShot(
   wsUrl: string,
   sessionKey: string,
   message: string,
   agentId?: string,
-  timeout = 120000,
+  timeout = 300000,
   stream = true,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -107,7 +111,6 @@ async function runSingleShot(
       noReconnect: true,
       onStatusChange: async (connected) => {
         if (connected) {
-          // Send the message
           const msg: WSMessage = {
             type: "user.message",
             sessionKey,
@@ -156,7 +159,6 @@ async function runSingleShot(
         if (msg.type === "agent.text") {
           clearTimeout(timer);
           if (!streaming) {
-            // Non-streaming full response
             const text = msg.text as string;
             if (isJsonMode()) {
               printJson(msg);
@@ -171,6 +173,59 @@ async function runSingleShot(
     });
 
     ws.connect();
+  });
+}
+
+/** Send message and exit immediately — don't wait for response. */
+async function runAsync(
+  wsUrl: string,
+  sessionKey: string,
+  message: string,
+  agentId?: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const messageId = randomUUID();
+
+    const ws = new BotsChatWSClient({
+      url: wsUrl,
+      getToken,
+      noReconnect: true,
+      onStatusChange: async (connected) => {
+        if (connected) {
+          const msg: WSMessage = {
+            type: "user.message",
+            sessionKey,
+            text: message,
+            messageId,
+          };
+          if (agentId) msg.targetAgentId = agentId;
+          await ws.send(msg);
+
+          if (isJsonMode()) {
+            printJson({ sent: true, messageId, sessionKey });
+          } else {
+            console.log(`Message sent (id: ${messageId})`);
+          }
+
+          // Brief delay to ensure message is flushed over WS
+          setTimeout(() => {
+            ws.disconnect();
+            resolve();
+          }, 500);
+        }
+      },
+      onMessage: () => {
+        // Ignore responses in async mode
+      },
+    });
+
+    ws.connect();
+
+    // Timeout for connection
+    setTimeout(() => {
+      ws.disconnect();
+      reject(new Error("Timeout connecting to server"));
+    }, 15000);
   });
 }
 
@@ -252,7 +307,6 @@ async function runInteractive(
         if (agentId) msg.targetAgentId = agentId;
         await ws.send(msg);
 
-        // Don't prompt until we get a response
         const waitForResponse = () => {
           const origOnMsg = ws["opts"].onMessage;
           ws["opts"].onMessage = (m) => {

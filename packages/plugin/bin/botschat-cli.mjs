@@ -1111,7 +1111,7 @@ var BotsChatWSClient = class {
 };
 
 // src/commands/chat.ts
-var chatCmd = new Command9("chat").description("Chat with an AI agent").argument("[message]", "Message to send (omit for interactive mode)").option("-i, --interactive", "Interactive REPL mode").option("-s, --session <sessionId>", "Session ID").option("-c, --channel <channelId>", "Channel ID").option("-a, --agent <agentId>", "Agent ID").option("--no-stream", "Wait for full response instead of streaming").option("--pipe", "Read message from stdin").option("--timeout <ms>", "Timeout in ms for single-shot mode", "120000").action(async (message, opts) => {
+var chatCmd = new Command9("chat").description("Chat with an AI agent").argument("[message]", "Message to send (omit for interactive mode)").option("-i, --interactive", "Interactive REPL mode").option("-s, --session <sessionId>", "Session ID").option("-c, --channel <channelId>", "Channel ID").option("-a, --agent <agentId>", "Agent ID").option("--no-stream", "Wait for full response instead of streaming").option("--async", "Send message and exit immediately without waiting for response").option("--pipe", "Read message from stdin").option("--timeout <seconds>", "Timeout in seconds for single-shot mode", "300").action(async (message, opts) => {
   try {
     const cfg = loadConfig();
     if (!cfg.userId || !cfg.token) {
@@ -1152,15 +1152,18 @@ var chatCmd = new Command9("chat").description("Chat with an AI agent").argument
     const wsProtocol = cfg.url.startsWith("https") ? "wss" : "ws";
     const wsHost = cfg.url.replace(/^https?:\/\//, "");
     const wsUrl = `${wsProtocol}://${wsHost}/api/ws/${cfg.userId}/${encodeURIComponent(sessionId)}`;
+    const timeoutMs = parseFloat(opts.timeout) * 1e3;
     if (interactive) {
       await runInteractive(wsUrl, sessionId, opts.agent, cfg.userId);
+    } else if (opts.async) {
+      await runAsync(wsUrl, sessionId, message, opts.agent);
     } else {
       await runSingleShot(
         wsUrl,
         sessionId,
         message,
         opts.agent,
-        parseInt(opts.timeout),
+        timeoutMs,
         opts.stream !== false
       );
     }
@@ -1169,7 +1172,7 @@ var chatCmd = new Command9("chat").description("Chat with an AI agent").argument
     process.exit(1);
   }
 });
-async function runSingleShot(wsUrl, sessionKey, message, agentId, timeout = 12e4, stream = true) {
+async function runSingleShot(wsUrl, sessionKey, message, agentId, timeout = 3e5, stream = true) {
   return new Promise((resolve, reject) => {
     let fullText = "";
     let streaming = false;
@@ -1238,6 +1241,44 @@ async function runSingleShot(wsUrl, sessionKey, message, agentId, timeout = 12e4
       }
     });
     ws.connect();
+  });
+}
+async function runAsync(wsUrl, sessionKey, message, agentId) {
+  return new Promise((resolve, reject) => {
+    const messageId = randomUUID3();
+    const ws = new BotsChatWSClient({
+      url: wsUrl,
+      getToken,
+      noReconnect: true,
+      onStatusChange: async (connected) => {
+        if (connected) {
+          const msg = {
+            type: "user.message",
+            sessionKey,
+            text: message,
+            messageId
+          };
+          if (agentId) msg.targetAgentId = agentId;
+          await ws.send(msg);
+          if (isJsonMode()) {
+            printJson({ sent: true, messageId, sessionKey });
+          } else {
+            console.log(`Message sent (id: ${messageId})`);
+          }
+          setTimeout(() => {
+            ws.disconnect();
+            resolve();
+          }, 500);
+        }
+      },
+      onMessage: () => {
+      }
+    });
+    ws.connect();
+    setTimeout(() => {
+      ws.disconnect();
+      reject(new Error("Timeout connecting to server"));
+    }, 15e3);
   });
 }
 async function runInteractive(wsUrl, sessionKey, agentId, userId) {
