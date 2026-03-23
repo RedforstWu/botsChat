@@ -34,8 +34,8 @@ new_sqlite_classes = ["ConnectionDO"]
 # --- Environment Variables ---
 [vars]
 ENVIRONMENT = "production"
-# Firebase project ID for Google/GitHub Sign-In token verification.
-FIREBASE_PROJECT_ID = "botschat-130ff"
+# Firebase project ID for Firebase auth token verification.
+FIREBASE_PROJECT_ID = "clawbotchat-79489"
 # Google OAuth Client IDs — used to verify native iOS/Android Google Sign-In tokens.
 GOOGLE_WEB_CLIENT_ID = "670756745871-1anrnjukhhu0a550j86blm771a2k3jou.apps.googleusercontent.com"
 GOOGLE_IOS_CLIENT_ID = "670756745871-ct1k370fk3h5oj3f3gdabqv1nq2b7r54.apps.googleusercontent.com"

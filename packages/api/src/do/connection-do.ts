@@ -847,7 +847,7 @@ export class ConnectionDO implements DurableObject {
     // Android: FCM with notification payload (data-only is silent in background)
     if (androidTokens.length > 0 && this.env.FCM_SERVICE_ACCOUNT_JSON) {
       const accessToken = await getFcmAccessToken(this.env.FCM_SERVICE_ACCOUNT_JSON);
-      const projectId = this.env.FIREBASE_PROJECT_ID ?? "botschat-130ff";
+      const projectId = this.env.FIREBASE_PROJECT_ID ?? "clawbotchat-79489";
       await Promise.allSettled(
         androidTokens.map(async (row) => {
           const ok = await sendPushNotification({
