@@ -3,7 +3,7 @@ import { authApi, setToken, setRefreshToken } from "../api";
 import type { AuthConfig } from "../api";
 import { useAppDispatch } from "../store";
 import { dlog } from "../debug-log";
-import { isFirebaseConfigured, signInWithGoogle, signInWithGitHub, signInWithApple } from "../firebase";
+import { isFirebaseConfigured, signInWithGoogle, signInWithGitHub, signInWithApple, signInWithEmail, registerWithEmail } from "../firebase";
 
 function PlayIcon() {
   return (
@@ -66,10 +66,15 @@ export function LoginPage() {
     });
   }, [firebaseEnabled]);
 
-  // Email/password login is permanently disabled — only OAuth (Google/GitHub) is allowed.
-  const emailEnabled = false;
+  // Email/password can be enabled either for local backend auth (dev) or via Firebase Auth.
+  const emailEnabled = !!authConfig?.emailEnabled;
   const configLoaded = authConfig !== null;
-  const hasAnyLoginMethod = configLoaded && (firebaseEnabled || emailEnabled);
+  const hasAnyLoginMethod = configLoaded && (
+    emailEnabled
+    || !!authConfig?.googleEnabled
+    || !!authConfig?.githubEnabled
+    || !!authConfig?.appleEnabled
+  );
 
   const handleAuthSuccess = (res: { id: string; email: string; displayName?: string; token: string; refreshToken?: string }) => {
     setToken(res.token);
@@ -106,7 +111,13 @@ export function LoginPage() {
 
     try {
       let res;
-      if (isRegister) {
+      if (firebaseEnabled && authConfig?.emailEnabled) {
+        dlog.info("Auth", `${isRegister ? "Registering" : "Logging in"} with Firebase email: ${email}`);
+        const firebaseRes = isRegister
+          ? await registerWithEmail(email, password, displayName || undefined)
+          : await signInWithEmail(email, password);
+        res = await authApi.firebase(firebaseRes.idToken);
+      } else if (isRegister) {
         dlog.info("Auth", `Registering new account: ${email}`);
         res = await authApi.register(email, password, displayName || undefined);
       } else {

@@ -313,11 +313,13 @@ auth.post("/refresh", async (c) => {
 /** GET /api/auth/config — public endpoint returning allowed auth methods */
 auth.get("/config", (c) => {
   const isDev = c.env.ENVIRONMENT === "development";
+  const firebaseEnabled = !!c.env.FIREBASE_PROJECT_ID;
   return c.json({
-    emailEnabled: isDev,
-    googleEnabled: !!c.env.FIREBASE_PROJECT_ID,
-    githubEnabled: !!c.env.FIREBASE_PROJECT_ID,
-    appleEnabled: !!c.env.FIREBASE_PROJECT_ID,
+    // In production, email/password is handled by Firebase Auth when Firebase is configured.
+    emailEnabled: isDev || firebaseEnabled,
+    googleEnabled: firebaseEnabled,
+    githubEnabled: firebaseEnabled,
+    appleEnabled: firebaseEnabled,
   });
 });
 

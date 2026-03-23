@@ -25,6 +25,9 @@ import {
   indexedDBLocalPersistence,
   inMemoryPersistence,
   setPersistence,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   type Auth,
 } from "firebase/auth";
 
@@ -75,7 +78,7 @@ export type FirebaseSignInResult = {
   email: string;
   displayName: string | null;
   photoURL: string | null;
-  provider: "google" | "github" | "apple";
+  provider: "google" | "github" | "apple" | "password";
 };
 
 // ---------------------------------------------------------------------------
@@ -302,5 +305,44 @@ export async function signInWithApple(): Promise<FirebaseSignInResult> {
     displayName: result.user.displayName,
     photoURL: result.user.photoURL,
     provider: "apple",
+  };
+}
+
+/**
+ * Sign in with Firebase email/password.
+ */
+export async function signInWithEmail(email: string, password: string): Promise<FirebaseSignInResult> {
+  const firebaseAuth = getFirebaseAuth();
+  const result = await signInWithEmailAndPassword(firebaseAuth, email, password);
+  const idToken = await result.user.getIdToken();
+
+  return {
+    idToken,
+    email: result.user.email ?? email,
+    displayName: result.user.displayName,
+    photoURL: result.user.photoURL,
+    provider: "password",
+  };
+}
+
+/**
+ * Register with Firebase email/password, optionally setting display name.
+ */
+export async function registerWithEmail(email: string, password: string, displayName?: string): Promise<FirebaseSignInResult> {
+  const firebaseAuth = getFirebaseAuth();
+  const result = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+
+  if (displayName?.trim()) {
+    await updateProfile(result.user, { displayName: displayName.trim() });
+  }
+
+  const idToken = await result.user.getIdToken(true);
+
+  return {
+    idToken,
+    email: result.user.email ?? email,
+    displayName: result.user.displayName,
+    photoURL: result.user.photoURL,
+    provider: "password",
   };
 }
