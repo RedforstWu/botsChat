@@ -12,8 +12,8 @@ not_found_handling = "single-page-application"
 # --- D1 Database ---
 [[d1_databases]]
 binding = "DB"
-database_name = "botschat-db"
-database_id = "aa8dc50d-c839-44c2-a019-5818f0487be4"
+database_name = "botschat-db-nd"
+database_id = "b88dcbde-75aa-4b0a-b85b-2d101e023396"
 migrations_dir = "migrations"
 
 # --- R2 Bucket ---
